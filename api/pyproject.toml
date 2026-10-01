@@ -12,6 +12,7 @@ dependencies = [
     "openai>=3.19",
     "anthropic>=1.8",
     "httpx>=0.28",
+    "livekit-api>=1.2.1",
 ]
 
 [dependency-groups]
