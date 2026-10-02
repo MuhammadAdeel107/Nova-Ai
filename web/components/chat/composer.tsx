@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
-import { ArrowUpIcon, AudioLinesIcon, CameraIcon, ImageIcon, PlusIcon, SquareIcon } from "lucide-react";
+import { ArrowUpIcon, CameraIcon, ImageIcon, MicIcon, PlusIcon, SquareIcon } from "lucide-react";
 
 import { AttachmentTray } from "@/components/photos/attachment-tray";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ export function Composer({
 }: {
   onSend: (text: string, images: ChatImage[]) => void;
   onStop: () => void;
-  /** When set, an empty composer shows a "Start voice mode" button instead of Send. */
+  /** When set, a separate "Start voice mode" mic button is always shown next to Send. */
   onVoice?: () => void;
   /** Enables the + menu, the photo tray and sending photos. */
   attachments?: UseAttachments;
@@ -79,7 +79,8 @@ export function Composer({
   };
 
   const canSend = streaming || (hasContent && !disabled && !processing && !blocked);
-  const showVoice = !!onVoice && !streaming && !hasContent;
+  // Voice is a separate button: visible whenever voice is available and no reply is streaming.
+  const showVoice = !!onVoice && !streaming;
   const sendLabel = streaming
     ? "Stop generating"
     : processing
@@ -186,32 +187,36 @@ export function Composer({
           </>
         )}
         <div className="flex-1" />
-        {showVoice ? (
+
+        {/* Button 1: Mic (voice mode) */}
+        {showVoice && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 type="button"
                 size="icon"
+                variant="outline"
                 onClick={onVoice}
                 aria-label="Start voice mode"
                 className="rounded-full"
               >
-                <AudioLinesIcon />
+                <MicIcon />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Start voice mode</TooltipContent>
           </Tooltip>
-        ) : (
-          <Button
-            type="submit"
-            size="icon"
-            disabled={!canSend}
-            aria-label={sendLabel}
-            className={cn("rounded-full", !canSend && "opacity-30")}
-          >
-            {streaming ? <SquareIcon className="size-3.5 fill-current" /> : <ArrowUpIcon />}
-          </Button>
         )}
+
+        {/* Button 2: Send (becomes Stop while a reply is streaming) */}
+        <Button
+          type="submit"
+          size="icon"
+          disabled={!canSend}
+          aria-label={sendLabel}
+          className={cn("rounded-full", !canSend && "opacity-30")}
+        >
+          {streaming ? <SquareIcon className="size-3.5 fill-current" /> : <ArrowUpIcon />}
+        </Button>
       </div>
     </form>
   );
