@@ -3,8 +3,8 @@
  * The user is a placeholder until authentication is added.
  */
 export const APP_CONFIG = {
-  appName: "Nova AI Assistant",
   devIndicators: false,
+  appName: "Nova AI Assistant",
   appDescription: "Nova AI Assistant",
   user: {
     name: "Adeel",
