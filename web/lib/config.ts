@@ -4,13 +4,13 @@
  */
 export const APP_CONFIG = {
   appName: "Nova AI Assistant",
+  devIndicators: false,
   appDescription: "Nova AI Assistant",
   user: {
     name: "Adeel",
     subtitle: "Workspace",
   },
 } as const;
-
 export function initialsOf(name: string): string {
   return (
     name
