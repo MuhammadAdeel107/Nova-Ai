@@ -11,6 +11,8 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
 
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from langchain_community.chat_message_histories import ChatMessageHistory
 from app.providers.base import ProviderError
 from app.providers.registry import ProviderRegistry
 from app.schemas import ChatMessage, ChatRequest
@@ -55,10 +57,25 @@ class ChatService:
         self._system_prompt = system_prompt
         self._allow_fallback = allow_fallback
 
-    def _with_system(self, messages: list[ChatMessage]) -> list[ChatMessage]:
-        if not self._system_prompt or any(m.role == "system" for m in messages):
-            return messages
-        return [ChatMessage(role="system", content=self._system_prompt), *messages]
+    def _build_history(self, messages: list[ChatMessage]) -> ChatMessageHistory:
+        """
+        Converts the request messages into a LangChain ChatMessageHistory object.
+        This abstraction makes it easier to swap the storage backend later.
+        """
+        history = ChatMessageHistory()
+
+        # Add system prompt first if provided
+        if self._system_prompt:
+            history.add_message(SystemMessage(content=self._system_prompt))
+
+        # Filter out any system messages from the incoming list to avoid duplicates
+        for m in messages:
+            if m.role == "user":
+                history.add_user_message(m.content)
+            elif m.role == "assistant":
+                history.add_ai_message(m.content)
+
+        return history
 
     async def stream(self, request: ChatRequest) -> AsyncIterator[ChatEvent]:
         # Any photo in the conversation needs a model that can read it.
@@ -84,14 +101,16 @@ class ChatService:
             yield ChatEvent("error", {"message": message})
             return
 
-        messages = self._with_system(request.messages)
+        # Use LangChain's ChatMessageHistory for structured message handling
+        history = self._build_history(request.messages)
         failures: list[str] = []
 
         for candidate in candidates:
             provider, model = candidate.provider, candidate.model
             started = False
             try:
-                async for delta in provider.stream_chat(model, messages, request.temperature):
+                # Pass the history messages to the provider
+                async for delta in provider.stream_chat(model, history.messages, request.temperature):
                     if not started:
                         started = True
                         yield ChatEvent(
@@ -115,7 +134,7 @@ class ChatService:
                 self._registry.invalidate()
                 continue
 
-            if not started:  # provider returned an empty reply; treat as success
+            if not started:
                 yield ChatEvent(
                     "meta",
                     {
